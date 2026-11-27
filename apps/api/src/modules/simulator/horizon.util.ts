@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { fetchWithSafeRedirects } from '../../common/ssrf-guard';
 
 export interface ParsedAsset {
   type: string;
@@ -14,9 +15,7 @@ const HORIZON_URLS: Record<string, string> = {
 export function getHorizonUrl(network: string): string {
   const url = HORIZON_URLS[network];
   if (!url) {
-    throw new BadRequestException(
-      `Invalid network: "${network}". Use "testnet" or "mainnet"`,
-    );
+    throw new BadRequestException(`Invalid network: "${network}". Use "testnet" or "mainnet"`);
   }
   return url;
 }
@@ -83,7 +82,9 @@ function horizonError(message: string, upstreamStatus: number | undefined): BadR
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchFromHorizon(url: string): Promise<any> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  const response = await fetchWithSafeRedirects(url, {
+    signal: AbortSignal.timeout(10000),
+  });
   const status = horizonStatus(response);
 
   if (!response.ok) {
